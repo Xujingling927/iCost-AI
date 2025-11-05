@@ -2,7 +2,7 @@
 #!desc=用于监控主流AI大模型服务商(DeepSeek, SiliconFlow, Volcano Engine、Moonshot、Google、OpenRouter)的API请求耗时、模型名称及性能，并通过通知进行分析。
 
 [MITM]
-hostname = %APPEND% api.deepseek.com, api.siliconflow.cn, ark.cn-beijing.volces.com, openrouter.ai, api.moonshot.cn, geminiapi.googleapis.com
+hostname = %APPEND% api.deepseek.com, api.siliconflow.cn, ark.cn-beijing.volces.com, openrouter.ai, api.moonshot.cn, generativelanguage.googleapis.com
 
 [Script]
 # iCost AI服务监控 - 请求脚本 (记录开始时间及模型名称)
