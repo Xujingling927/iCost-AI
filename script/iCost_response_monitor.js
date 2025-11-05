@@ -61,7 +61,15 @@
         if (match && match[1]) {
             jsonString = match[1];
         }
-        const contentJson = JSON.parse(jsonString);
+        let contentJson;
+        try {
+            contentJson = JSON.parse(jsonString);
+        } catch (parseError) {
+            console.log(`iCost Monitor: 解析内容字符串失败 - ${parseError}`);
+            $notification.post("🤖 iCost AI 服务监控", `${providerName} | ${modelName}`, `内容字符串解析错误: ${parseError}`);
+            $done({});
+            return;
+        }
 
         let resultCount = 0;
         if (contentJson.results && Array.isArray(contentJson.results)) {

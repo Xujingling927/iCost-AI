@@ -1,0 +1,13 @@
+#!name=iCost AI 服务监控模块
+#!desc=用于监控主流AI大模型服务商(DeepSeek, SiliconFlow, Volcano Engine、Moonshot、Google、OpenRouter)的API请求耗时、模型名称及性能，并通过通知进行分析。
+
+[MITM]
+hostname = %APPEND% api.deepseek.com, api.siliconflow.cn, ark.cn-beijing.volces.com, openrouter.ai, api.moonshot.cn, geminiapi.googleapis.com
+
+[Script]
+# iCost AI服务监控 - 请求脚本 (记录开始时间及模型名称)
+iCost_Request_Timer = type=http-request, pattern=^(https?://api\.deepseek\.com/chat/completions|https?://api\.siliconflow\.cn/v1/chat/completions|https?://ark\.cn-beijing\.volces\.com/api/v3/chat/completions|https?://openrouter\.ai/v1/chat/completions|https?://api\.moonshot\.cn/v1/chat/completions|https?://generativelanguage\.googleapis\.com/v1beta/openai/chat/completions)$, requires-body=true, script-content=https://raw.githubusercontent.com/Xujingling927/iCost-AI/refs/heads/main/script/iCost_request_timer.js
+
+
+# iCost AI服务监控 - 响应脚本 (计算耗时并发送通知)
+iCost_Response_Monitor = type=http-response, pattern=^(https?://api\.deepseek\.com/chat/completions|https?://api\.siliconflow\.cn/v1/chat/completions|https?://ark\.cn-beijing\.volces\.com/api/v3/chat/completions|https?://openrouter\.ai/v1/chat/completions|https?://api\.moonshot\.cn/v1/chat/completions|https?://generativelanguage\.googleapis\.com/v1beta/openai/chat/completions)$, requires-body=true, script-content=https://raw.githubusercontent.com/Xujingling927/iCost-AI/refs/heads/main/script/iCost_response_monitor.js
