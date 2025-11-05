@@ -1,26 +1,52 @@
 /*
- * Surge脚本：iCost AI服务商监控 - 响应脚本 (v4)
+ * Surge脚本：iCost AI服务商监控 - 响应脚本 (v5)
  * 作者：Surge脚本专家
  *
  * v4更新：
  * - 支持多家服务商 (DeepSeek, SiliconFlow, Volcano Engine、Moonshot、OpenRouter、Gemini等)
  * - 从request脚本获取模型名称，并在通知中展示。
  * - 自动根据URL判断服务商名称。
+ * 
+ * v5更新：
+ * - 支持日志等级变量log_level (info/debug)
  */
 
 (function() {
-    console.log("=== iCost Monitor 响应脚本开始执行 ===");
-    console.log(`Request URL: ${$request.url}`);
-    console.log(`Request ID: ${$request.id}`);
+    // 日志等级配置: "info" 或 "debug"，默认为 "info"
+    // 可通过 $argument 传入，格式: log_level=debug
+    const LOG_LEVEL = (() => {
+        if ($argument) {
+            const match = $argument.match(/log_level=(info|debug)/i);
+            if (match) return match[1].toLowerCase();
+        }
+        return "info";
+    })();
+    
+    // 日志输出函数
+    const log = {
+        info: (msg) => {
+            console.log(`[INFO] ${msg}`);
+        },
+        debug: (msg) => {
+            if (LOG_LEVEL === "debug") {
+                console.log(`[DEBUG] ${msg}`);
+            }
+        }
+    };
+    
+    log.info("=== iCost Monitor 响应脚本开始执行 ===");
+    log.info(`日志等级: ${LOG_LEVEL.toUpperCase()}`);
+    log.debug(`Request URL: ${$request.url}`);
+    log.debug(`Request ID: ${$request.id}`);
     
     // 1. 读取并解析来自request脚本的数据
     const rawData = $persistentStore.read($request.id);
-    console.log(`读取到的原始数据: ${rawData ? '存在' : '不存在'}`);
+    log.debug(`读取到的原始数据: ${rawData ? '存在' : '不存在'}`);
     
     $persistentStore.write(null, $request.id); // 清理数据
 
     if (!rawData) {
-        console.log("iCost Monitor: 未找到对应的请求开始数据。");
+        log.info("未找到对应的请求开始数据");
         $done({});
         return;
     }
@@ -28,7 +54,8 @@
     const storedData = JSON.parse(rawData);
     const startTimeMs = storedData.startTime;
     const modelName = storedData.model;
-    console.log(`解析数据 - 模型: ${modelName}, 开始时间: ${startTimeMs}`);
+    log.info(`模型: ${modelName}`);
+    log.debug(`开始时间: ${startTimeMs}`);
 
     // 2. 判断服务商
     const providerMap = {
@@ -43,29 +70,29 @@
     const providerName = Object.entries(providerMap)
         .find(([key]) => $request.url.includes(key))?.[1] || "Unknown Provider";
     
-    console.log(`识别服务商: ${providerName}`);
+    log.info(`服务商: ${providerName}`);
 
     // 3. 解析响应体并计算
     if (!$response.body) {
-        console.log("iCost Monitor: 响应体为空。");
+        log.info("响应体为空");
         $done({});
         return;
     }
 
-    console.log(`响应体长度: ${$response.body.length} 字节`);
+    log.debug(`响应体长度: ${$response.body.length} 字节`);
 
     try {
         const responseJson = JSON.parse($response.body);
-        console.log(`响应JSON解析成功, choices数量: ${responseJson.choices?.length || 0}`);
+        log.debug(`响应JSON解析成功, choices数量: ${responseJson.choices?.length || 0}`);
         
         if (!responseJson.choices || responseJson.choices.length === 0) {
-            console.log("iCost Monitor: choices 为空或不存在");
+            log.info("choices 为空或不存在");
             $done({});
             return;
         }
 
         const contentStr = responseJson.choices[0].message.content;
-        console.log(`内容字符串长度: ${contentStr?.length || 0}`);
+        log.debug(`内容字符串长度: ${contentStr?.length || 0}`);
         
         // 增加对Markdown格式JSON的兼容处理
         let jsonString = contentStr;
@@ -75,15 +102,15 @@
         // 如果匹配到Markdown代码块,则提取其中的内容作为JSON字符串
         if (match && match[1]) {
             jsonString = match[1];
-            console.log("检测到Markdown格式,已提取JSON内容");
+            log.debug("检测到Markdown格式,已提取JSON内容");
         }
         
         let contentJson;
         try {
             contentJson = JSON.parse(jsonString);
-            console.log("内容JSON解析成功");
+            log.debug("内容JSON解析成功");
         } catch (parseError) {
-            console.log(`iCost Monitor: 解析内容字符串失败 - ${parseError}`);
+            log.info(`解析内容字符串失败 - ${parseError}`);
             $notification.post("🤖 iCost AI 服务监控", `${providerName} | ${modelName}`, `内容字符串解析错误: ${parseError}`);
             $done({});
             return;
@@ -93,7 +120,7 @@
         if (contentJson.results && Array.isArray(contentJson.results)) {
             resultCount = contentJson.results.length;
         }
-        console.log(`结果数量: ${resultCount}`);
+        log.debug(`结果数量: ${resultCount}`);
 
         const totalDuration = new Date().getTime() - startTimeMs;
         
@@ -108,12 +135,12 @@
         const notificationBody = `请求耗时: ${totalDuration} ms \n生成记录: ${resultCount} 条, 平均: ${avgTimePerResult.toFixed(2)} ms/条`;
 
         $notification.post(notificationTitle, notificationSubtitle, notificationBody);
-        console.log(`iCost Monitor: ${notificationSubtitle}, ${notificationBody.replace('\n', ', ')}`);
-        console.log("=== iCost Monitor 响应脚本执行完成 ===");
+        log.info(`${notificationSubtitle}, 耗时: ${totalDuration} ms, 记录: ${resultCount} 条`);
+        log.info("=== iCost Monitor 响应脚本执行完成 ===");
 
     } catch (error) {
-        console.log(`iCost Monitor: 解析响应体失败 - ${error}`);
-        console.log(`错误堆栈: ${error.stack}`);
+        log.info(`解析响应体失败 - ${error}`);
+        log.debug(`错误堆栈: ${error.stack}`);
         $notification.post("🤖 iCost AI 服务监控", `${providerName} | ${modelName}`, `脚本执行错误: ${error}`);
     } finally {
         $done({});
