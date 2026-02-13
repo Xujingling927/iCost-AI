@@ -64,7 +64,8 @@
         volces: "Volcano Engine",
         openrouter: "OpenRouter",
         moonshot: "Moonshot",
-        google: "Gemini"
+        google: "Gemini",
+        bigmodel: "Zhipu BigModel"
     };
     
     const providerName = Object.entries(providerMap)
